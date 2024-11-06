@@ -11,13 +11,11 @@ Este projeto é um dashboard para gerenciar contratos. Ele permite visualizar, a
 
 ## Imagens
 
-!image (1).png
-!image.png
+![Imagem 1](image%20(1).png)
+![Imagem 2](image.png)
 
 ## Tecnologias Utilizadas
 
 - Pandas
 - Plotly
 - Streamlit
-
-

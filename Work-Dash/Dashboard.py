@@ -7,7 +7,7 @@ st.set_page_config(page_title="Gestão de Contratos", layout="wide")
 
 @st.cache_data
 def load_data():
-    df = pd.read_excel('dados_estruturados.xlsx')
+    df = pd.read_excel("planilhas\dados_estruturados.xlsx")
     return df
 
 df = load_data()

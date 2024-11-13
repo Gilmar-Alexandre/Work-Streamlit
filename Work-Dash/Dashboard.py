@@ -101,12 +101,22 @@ filtered_df = grouped_df[
     (grouped_df['MÊS'].isin(selected_months))
 ]
 
+
 def plot_value_acrescentado(df):
     # Calculando a diferença (acréscimo no reajuste)
     df['ACRESCIMO_REAJUSTE'] = df['VALOR REAJUSTADO\n(POR 12 MESES)'] - df['VALOR PAGO\n(POR 12 MESES)']
     
+    # Definindo a ordem dos meses
+    month_order = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
+    
+    # Convertendo a coluna 'MÊS' para uma categoria ordenada
+    df['MÊS'] = pd.Categorical(df['MÊS'], categories=month_order, ordered=True)
+
     # Agrupando por MÊS para calcular a soma do acréscimo por mês
     monthly_acrescimento = df.groupby('MÊS').agg({'ACRESCIMO_REAJUSTE': 'sum'}).reset_index()
+
+    # Ordenando o DataFrame pela coluna 'MÊS' para garantir a ordem correta
+    monthly_acrescimento = monthly_acrescimento.sort_values('MÊS')
 
     # Criando o gráfico de linha suave
     fig = go.Figure()
@@ -139,11 +149,13 @@ def plot_value_acrescentado(df):
         title="Acréscimo no Reajuste por Mês",
         xaxis_title='Mês',
         yaxis_title='Valor Acrescentado (R$)',
-        xaxis_tickformat='R$,.2f',
         showlegend=False,
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(showline=False, showgrid=False, zeroline=False),
+        xaxis=dict(
+            showline=False, showgrid=False, zeroline=False,
+            categoryorder='array', categoryarray=month_order
+        ),
         yaxis=dict(showline=False, showgrid=False, zeroline=False)
     )
 
@@ -174,6 +186,7 @@ def plot_index_analysis(df):
     ))
 
     fig.update_layout(
+        title="Percentual de Indice de Reajuste",
         xaxis=dict(showline=False, showgrid=False, zeroline=False),
         yaxis=dict(showline=False, showgrid=False, zeroline=False),
         plot_bgcolor='rgba(0,0,0,0)',

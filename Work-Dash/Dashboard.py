@@ -41,8 +41,8 @@ def process_data(df):
 
 grouped_df = process_data(df)
 
-#Dashboard
-st.header("Dashboard Contratos")
+# Dashboard
+st.title("Dashboard de Gestão de Contratos")
 
 # Função para formatar valores no formato brasileiro
 def format_currency(value):
@@ -66,8 +66,14 @@ diferenca_renovado = (df_renovado['VALOR REAJUSTADO\n(POR 12 MESES)'] - df_renov
 df_em_processo = grouped_df[grouped_df['STATUS / AÇÃO'] == 'EM PROCESSO']
 diferenca_em_processo = (df_em_processo['VALOR REAJUSTADO\n(POR 12 MESES)'] - df_em_processo['VALOR PAGO\n(POR 12 MESES)']).sum()
 
+# Calcular o percentual de renovação
+total_contratos = len(grouped_df)
+total_renovados = len(df_renovado)
+percentual_renovacao = (total_renovados / total_contratos) * 100
+
 # Layout das métricas
-col1, col2, col3, col4 = st.columns(4)
+st.subheader("Visão Geral dos Contratos")
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     st.metric(label="Valor Previsto", value=format_currency(valor_previsto))
@@ -86,6 +92,13 @@ with col4:
         delta_color="inverse"
     )
 
+with col5:
+    st.metric(
+        label="Percentual de Renovação",
+        value=f"{percentual_renovacao:.2f}%",
+        delta=None
+    )
+
 # Barra Lateral
 with st.sidebar:
     st.header("Filtros")
@@ -101,42 +114,27 @@ filtered_df = grouped_df[
     (grouped_df['MÊS'].isin(selected_months))
 ]
 
-
+# Funções de plotagem
 def plot_value_acrescentado(df):
-    # Calculando a diferença (acréscimo no reajuste)
     df['ACRESCIMO_REAJUSTE'] = df['VALOR REAJUSTADO\n(POR 12 MESES)'] - df['VALOR PAGO\n(POR 12 MESES)']
-    
-    # Definindo a ordem dos meses
     month_order = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
-    
-    # Convertendo a coluna 'MÊS' para uma categoria ordenada
     df['MÊS'] = pd.Categorical(df['MÊS'], categories=month_order, ordered=True)
-
-    # Agrupando por MÊS para calcular a soma do acréscimo por mês
     monthly_acrescimento = df.groupby('MÊS').agg({'ACRESCIMO_REAJUSTE': 'sum'}).reset_index()
-
-    # Ordenando o DataFrame pela coluna 'MÊS' para garantir a ordem correta
     monthly_acrescimento = monthly_acrescimento.sort_values('MÊS')
 
-    # Criando o gráfico de linha suave
     fig = go.Figure()
-
-    # Adicionando linha suave para o acréscimo
     fig.add_trace(go.Scatter(
         x=monthly_acrescimento['MÊS'],
         y=monthly_acrescimento['ACRESCIMO_REAJUSTE'],
         mode='lines+markers+text',
         line=dict(color='darkblue', width=2, shape='spline'),
         text=monthly_acrescimento['ACRESCIMO_REAJUSTE'],
-        texttemplate='%{text:.2s}',  # Exibindo os valores em formato compacto (ex: R$ 1,2K)
+        texttemplate='%{text:.2s}',
         textposition='top center',
         marker=dict(symbol='circle', size=8, color='royalblue')
     ))
 
-    # Total de acrescimento
     total_acrescimo = monthly_acrescimento['ACRESCIMO_REAJUSTE'].sum()
-
-    # Adicionando anotação para mostrar o total de acréscimo
     fig.add_annotation(
         text=f"Total Acréscimo: {format_currency(total_acrescimo)}",
         xref="paper", yref="paper",
@@ -144,7 +142,6 @@ def plot_value_acrescentado(df):
         font=dict(size=18, color="white")
     )
 
-    # Ajustando o layout
     fig.update_layout(
         title="Acréscimo no Reajuste por Mês",
         xaxis_title='Mês',
@@ -161,7 +158,6 @@ def plot_value_acrescentado(df):
 
     return fig
 
-# Função para análise do índice de reajuste
 def plot_index_analysis(df):
     index_summary = df.groupby('ÍNDICE').agg({
         'VALOR PAGO\n(POR 12 MESES)': 'mean',
@@ -169,7 +165,6 @@ def plot_index_analysis(df):
     }).reset_index()
 
     fig = go.Figure()
-
     fig.add_trace(go.Bar(
         x=index_summary['ÍNDICE'],
         y=index_summary['VALOR PAGO\n(POR 12 MESES)'],
@@ -196,10 +191,8 @@ def plot_index_analysis(df):
     
     return fig
 
-
 def plot_contracts_per_month(df):
     contracts_per_month = df.groupby('MÊS').size().reset_index(name='TOTAL DE CONTRATOS')
-
     months_order = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
                     'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
     contracts_per_month['MÊS'] = pd.Categorical(contracts_per_month['MÊS'], categories=months_order, ordered=True)
@@ -242,7 +235,6 @@ def plot_pie_chart(df):
 
     return fig
 
-# Função para plotar gráfico de dispersão com linha de regressão
 def plot_regression_chart(df):
     df['DIFERENÇA'] = df['VALOR REAJUSTADO\n(POR 12 MESES)'] - df['VALOR PAGO\n(POR 12 MESES)']
 
@@ -286,7 +278,8 @@ def plot_regression_chart(df):
     return fig
 
 # Gráficos no layout principal
-col1, col2, col3= st.columns(3)
+st.subheader("Análise Visual dos Dados")
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.plotly_chart(plot_value_acrescentado(filtered_df), use_container_width=True)

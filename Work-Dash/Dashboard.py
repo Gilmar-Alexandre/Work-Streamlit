@@ -9,7 +9,7 @@ st.set_page_config(page_title="Gestão de Contratos", layout="wide")
 
 @st.cache_data
 def load_data():
-    df = pd.read_excel("planilhas/dados_estruturados.xlsx")
+    df = pd.read_excel("planilhas/2024.xlsx")
     return df
 
 df = load_data()
@@ -71,8 +71,6 @@ total_contratos = len(grouped_df)
 total_renovados = len(df_renovado)
 percentual_renovacao = (total_renovados / total_contratos) * 100
 
-# Layout das métricas
-st.subheader("Visão Geral dos Contratos")
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
@@ -266,7 +264,7 @@ def plot_regression_chart(df):
     ))
 
     fig.update_layout(
-        title="Regressão Linear: Diferença de Valor em Relação ao Valor Pago",
+        title="Diferença de Valor em Relação ao Valor Pago",
         xaxis_title="Valor Pago (por 12 meses)",
         yaxis_title="Diferença de Valor",
         xaxis=dict(showline=True, showgrid=False, zeroline=False),
@@ -277,8 +275,6 @@ def plot_regression_chart(df):
 
     return fig
 
-# Gráficos no layout principal
-st.subheader("Análise Visual dos Dados")
 col1, col2, col3 = st.columns(3)
 
 with col1:

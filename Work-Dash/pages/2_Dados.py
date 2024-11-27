@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 
 # Leia os dados do arquivo Excel
-df = pd.read_excel("planilhas/dados_estruturados.xlsx")
+df = pd.read_excel("planilhas/2024.xlsx")
 
 # Criar listas únicas para validação
 unique_systems = df['SISTEMA'].unique()
@@ -16,6 +17,9 @@ def save_to_excel(df, file_path):
 # Exiba o DataFrame no Streamlit
 st.dataframe(df)
 
+# Filtros e campos na barra lateral
+st.sidebar.header('Filtros e Modificações')
+
 # Adicione uma opção para filtrar pelo número de contrato
 contrato_selecionado = st.sidebar.selectbox('Selecione o Número do Contrato', df['CONTRATO Nº'].unique())
 
@@ -26,38 +30,51 @@ st.dataframe(df_filtrado)
 
 # Campos para adicionar ou modificar um contrato
 st.sidebar.header('Adicionar/Modificar Contrato')
-contrato_num = st.sidebar.text_input('Número do Contrato')
-empresa = st.sidebar.selectbox('Empresa', unique_companies)
+novo_cliente = st.sidebar.checkbox('Novo Cliente?')
+
+# Campos comuns para modificação
+contrato_num = st.sidebar.text_input('Número do Contrato', value=contrato_selecionado if not novo_cliente else "")
 sistema = st.sidebar.selectbox('Sistema', unique_systems)
-inicio = st.sidebar.date_input('Início')
-termino = st.sidebar.date_input('Término')
-mes = st.sidebar.text_input('Mês')
-vigencia = st.sidebar.text_input('Vigência')
-indice = st.sidebar.selectbox('Índice', unique_indices)
-periodo_faturamento = st.sidebar.text_input('Período de Faturamento')
-valor_pago = st.sidebar.number_input('Valor Pago', min_value=0.0, format='%f')
-valor_pago_12 = st.sidebar.number_input('Valor Pago (por 12 Meses)', min_value=0.0, format='%f')
-indice_publicado = st.sidebar.text_input('Índice Publicado')
-indice_aplicado = st.sidebar.text_input('Índice Aplicado')
-valor_reajustado = st.sidebar.number_input('Valor Reajustado', min_value=0.0, format='%f')
-valor_reajustado_12 = st.sidebar.number_input('Valor Reajustado (por 12 Meses)', min_value=0.0, format='%f')
-pedido_ordem_compras = st.sidebar.text_input('Pedido/Ordem de Compras')
-status_acao = st.sidebar.text_input('Status / Ação')
-data_acao = st.sidebar.date_input('Data da Ação')
-diferenca_valor_contrato = st.sidebar.number_input('Diferença de Valor de Contrato', min_value=0.0, format='%f')
+
+# Campos adicionais apenas para novos clientes
+if novo_cliente:
+    empresa = st.sidebar.selectbox('Empresa', unique_companies)
+    inicio = st.sidebar.date_input('Início', value=datetime.today())
+    termino = st.sidebar.date_input('Término', value=datetime.today())
+    mes = st.sidebar.text_input('Mês')
+    vigencia = st.sidebar.text_input('Vigência')
+    indice = st.sidebar.selectbox('Índice', unique_indices, index=0)  # Definindo índice padrão
+    periodo_faturamento = st.sidebar.text_input('Período de Faturamento')
+    valor_pago = st.sidebar.number_input('Valor Pago', min_value=0.0, format='%f')
+    valor_pago_12 = st.sidebar.number_input('Valor Pago (por 12 Meses)', min_value=0.0, format='%f')
+    indice_publicado = st.sidebar.text_input('Índice Publicado', value='Padrão')  # Valor padrão
+    indice_aplicado = st.sidebar.text_input('Índice Aplicado', value='Padrão')  # Valor padrão
+    valor_reajustado = st.sidebar.number_input('Valor Reajustado', min_value=0.0, format='%f')
+    valor_reajustado_12 = st.sidebar.number_input('Valor Reajustado (por 12 Meses)', min_value=0.0, format='%f')
+    pedido_ordem_compras = st.sidebar.text_input('Pedido/Ordem de Compras')
+    status_acao = st.sidebar.text_input('Status / Ação')
+    data_acao = st.sidebar.date_input('Data da Ação', value=datetime.today())
+    diferenca_valor_contrato = st.sidebar.number_input('Diferença de Valor de Contrato', min_value=0.0, format='%f')
+else:
+    # Preenchimento automático se não for novo cliente
+    if contrato_selecionado:
+        contrato_anterior = df[df['CONTRATO Nº'] == contrato_selecionado].iloc[0]
+        empresa = contrato_anterior['EMPRESA']
+        sistema = contrato_anterior['SISTEMA']
+        # Preencha outros campos conforme necessário
 
 # Função para validar os campos
 def validate_fields():
     errors = []
     if not contrato_num:
         errors.append("Número do Contrato é obrigatório.")
-    if not empresa:
+    if novo_cliente and not empresa:
         errors.append("Empresa é obrigatória.")
     if not sistema:
         errors.append("Sistema é obrigatório.")
-    if not indice:
+    if novo_cliente and not indice:
         errors.append("Índice é obrigatório.")
-    if inicio > termino:
+    if novo_cliente and inicio > termino:
         errors.append("A data de início não pode ser maior que a data de término.")
     return errors
 
@@ -68,18 +85,7 @@ if st.sidebar.button('Adicionar/Modificar'):
         for error in errors:
             st.sidebar.error(error)
     else:
-        # Verificar se o contrato já existe
-        if contrato_num in df['CONTRATO Nº'].values:
-            # Modificar o contrato existente
-            df.loc[df['CONTRATO Nº'] == contrato_num, ['EMPRESA', 'SISTEMA', 'INÍCIO', 'TÉRMINO', 'MÊS', 'VIGÊNCIA', 'ÍNDICE', 'PERÍODO DE FATURAMENTO', 
-                                                       'VALOR PAGO', 'VALOR PAGO (POR 12 MESES)', 'ÍNDICE PUBLICADO', 'ÍNDICE APLICADO', 
-                                                       'VALOR REAJUSTADO', 'VALOR REAJUSTADO (POR 12 MESES)', 'PEDIDO/ORDEM DE COMPRAS', 
-                                                       'STATUS / AÇÃO', 'DATA DA AÇÃO', 'DIFERENÇA DE VALOR DE CONTRATO']] = \
-                                                      [empresa, sistema, inicio, termino, mes, vigencia, indice, periodo_faturamento, valor_pago, 
-                                                       valor_pago_12, indice_publicado, indice_aplicado, valor_reajustado, valor_reajustado_12, 
-                                                       pedido_ordem_compras, status_acao, data_acao, diferenca_valor_contrato]
-            st.success('Contrato modificado com sucesso!')
-        else:
+        if novo_cliente:
             # Adicionar novo contrato
             new_data = pd.DataFrame({
                 'CONTRATO Nº': [contrato_num],
@@ -104,6 +110,10 @@ if st.sidebar.button('Adicionar/Modificar'):
             })
             df = pd.concat([df, new_data], ignore_index=True)
             st.success('Contrato adicionado com sucesso!')
+        else:
+            # Modificar o contrato existente
+            df.loc[df['CONTRATO Nº'] == contrato_num, ['SISTEMA']] = [sistema]
+            st.success('Contrato modificado com sucesso!')
 
         # Salve as alterações no arquivo Excel
         save_to_excel(df, "planilhas/dados_estruturados.xlsx")
@@ -119,4 +129,4 @@ if st.sidebar.button('Excluir'):
         # Salve as alterações no arquivo Excel
         save_to_excel(df, "planilhas/dados_estruturados.xlsx")
     else:
-        st.error('Contrato não encontrado!')
+        st.sidebar.error('Contrato não encontrado!')

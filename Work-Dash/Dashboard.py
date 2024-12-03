@@ -20,17 +20,16 @@ def process_data(df):
         'SISTEMA': 'first',
         'MÊS': 'first',
         'ÍNDICE': 'first',
-        'VALOR PAGO\n(POR 12 MESES)': 'sum',
-        'VALOR REAJUSTADO\n(POR 12 MESES)': 'sum',
+        'VALOR PAGO': 'sum',
+        'VALOR REAJUSTADO': 'sum',
         'PEDIDO/ORDEM DE COMPRAS': 'first',
         'STATUS / AÇÃO': 'first',
-        'DATA DA AÇÃO': 'first',
         'DIFERENÇA DE VALOR DE CONTRATO': 'sum'
     }).reset_index()
 
     value_columns = [
-        'VALOR PAGO\n(POR 12 MESES)',
-        'VALOR REAJUSTADO\n(POR 12 MESES)',
+        'VALOR PAGO',
+        'VALOR REAJUSTADO',
         'DIFERENÇA DE VALOR DE CONTRATO'
     ]
 
@@ -49,22 +48,22 @@ def format_currency(value):
     return f"R${value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # Calculando os valores das métricas
-valor_previsto = grouped_df['VALOR REAJUSTADO\n(POR 12 MESES)'].sum()
-valor_renovado = grouped_df[grouped_df['STATUS / AÇÃO'] == 'RENOVADO']['VALOR REAJUSTADO\n(POR 12 MESES)'].sum()
-valor_em_processo = grouped_df[grouped_df['STATUS / AÇÃO'] == 'EM PROCESSO']['VALOR REAJUSTADO\n(POR 12 MESES)'].sum()
-valor_cancelado = grouped_df[grouped_df['STATUS / AÇÃO'] == 'CANCELADO']['VALOR REAJUSTADO\n(POR 12 MESES)'].sum()
+valor_previsto = grouped_df['VALOR REAJUSTADO'].sum()
+valor_renovado = grouped_df[grouped_df['STATUS / AÇÃO'] == 'RENOVADO']['VALOR REAJUSTADO'].sum()
+valor_em_processo = grouped_df[grouped_df['STATUS / AÇÃO'] == 'EM PROCESSO']['VALOR REAJUSTADO'].sum()
+valor_cancelado = grouped_df[grouped_df['STATUS / AÇÃO'] == 'CANCELADO']['VALOR REAJUSTADO'].sum()
 
 # Calcular a diferença entre valor pago e valor reajustado para os cancelados
 df_cancelado = grouped_df[grouped_df['STATUS / AÇÃO'] == 'CANCELADO']
-diferenca_cancelado = (df_cancelado['VALOR REAJUSTADO\n(POR 12 MESES)'] - df_cancelado['VALOR PAGO\n(POR 12 MESES)']).sum()
+diferenca_cancelado = (df_cancelado['VALOR REAJUSTADO'] - df_cancelado['VALOR PAGO']).sum()
 
 # Calcular a diferença entre valor pago e valor reajustado para os renovados
 df_renovado = grouped_df[grouped_df['STATUS / AÇÃO'] == 'RENOVADO']
-diferenca_renovado = (df_renovado['VALOR REAJUSTADO\n(POR 12 MESES)'] - df_renovado['VALOR PAGO\n(POR 12 MESES)']).sum()
+diferenca_renovado = (df_renovado['VALOR REAJUSTADO'] - df_renovado['VALOR PAGO']).sum()
 
 # Calcular a diferença entre valor pago e valor reajustado para os em processo
 df_em_processo = grouped_df[grouped_df['STATUS / AÇÃO'] == 'EM PROCESSO']
-diferenca_em_processo = (df_em_processo['VALOR REAJUSTADO\n(POR 12 MESES)'] - df_em_processo['VALOR PAGO\n(POR 12 MESES)']).sum()
+diferenca_em_processo = (df_em_processo['VALOR REAJUSTADO'] - df_em_processo['VALOR PAGO']).sum()
 
 # Calcular o percentual de renovação
 total_contratos = len(grouped_df)
@@ -114,7 +113,7 @@ filtered_df = grouped_df[
 
 # Funções de plotagem
 def plot_value_acrescentado(df):
-    df['ACRESCIMO_REAJUSTE'] = df['VALOR REAJUSTADO\n(POR 12 MESES)'] - df['VALOR PAGO\n(POR 12 MESES)']
+    df['ACRESCIMO_REAJUSTE'] = df['VALOR REAJUSTADO'] - df['VALOR PAGO']
     month_order = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
     df['MÊS'] = pd.Categorical(df['MÊS'], categories=month_order, ordered=True)
     monthly_acrescimento = df.groupby('MÊS').agg({'ACRESCIMO_REAJUSTE': 'sum'}).reset_index()
@@ -158,21 +157,21 @@ def plot_value_acrescentado(df):
 
 def plot_index_analysis(df):
     index_summary = df.groupby('ÍNDICE').agg({
-        'VALOR PAGO\n(POR 12 MESES)': 'mean',
-        'VALOR REAJUSTADO\n(POR 12 MESES)': 'mean'
+        'VALOR PAGO': 'mean',
+        'VALOR REAJUSTADO': 'mean'
     }).reset_index()
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=index_summary['ÍNDICE'],
-        y=index_summary['VALOR PAGO\n(POR 12 MESES)'],
+        y=index_summary['VALOR PAGO'],
         name='Valor Pago',
         marker_color='lightcyan'
     ))
 
     fig.add_trace(go.Scatter(
         x=index_summary['ÍNDICE'],
-        y=index_summary['VALOR REAJUSTADO\n(POR 12 MESES)'],
+        y=index_summary['VALOR REAJUSTADO'],
         name='Valor Reajustado',
         mode='lines+markers',
         line=dict(color='darkblue', width=2),
@@ -234,9 +233,9 @@ def plot_pie_chart(df):
     return fig
 
 def plot_regression_chart(df):
-    df['DIFERENÇA'] = df['VALOR REAJUSTADO\n(POR 12 MESES)'] - df['VALOR PAGO\n(POR 12 MESES)']
+    df['DIFERENÇA'] = df['VALOR REAJUSTADO'] - df['VALOR PAGO']
 
-    X = df[['VALOR PAGO\n(POR 12 MESES)']]
+    X = df[['VALOR PAGO']]
     y = df['DIFERENÇA']
 
     reg = LinearRegression()
@@ -247,7 +246,7 @@ def plot_regression_chart(df):
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(
-        x=df['VALOR PAGO\n(POR 12 MESES)'],
+        x=df['VALOR PAGO'],
         y=df['DIFERENÇA'],
         mode='markers',
         name='Diferença Observada',
@@ -256,7 +255,7 @@ def plot_regression_chart(df):
     ))
 
     fig.add_trace(go.Scatter(
-        x=df['VALOR PAGO\n(POR 12 MESES)'],
+        x=df['VALOR PAGO'],
         y=df['PREDICTED_DIFERENÇA'],
         mode='lines',
         name='Diferença Estimada',
@@ -265,7 +264,7 @@ def plot_regression_chart(df):
 
     fig.update_layout(
         title="Diferença de Valor em Relação ao Valor Pago",
-        xaxis_title="Valor Pago (por 12 meses)",
+        xaxis_title="Valor Pago",
         yaxis_title="Diferença de Valor",
         xaxis=dict(showline=True, showgrid=False, zeroline=False),
         yaxis=dict(showline=True, showgrid=False, zeroline=False),

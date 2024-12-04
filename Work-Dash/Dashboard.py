@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from sklearn.linear_model import LinearRegression
-import numpy as np
 
 st.set_page_config(page_title="Gestão de Contratos", layout="wide")
 

@@ -2,131 +2,74 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# Leia os dados do arquivo Excel
-df = pd.read_excel("planilhas/2024.xlsx")
-
-# Criar listas únicas para validação
-unique_systems = df['SISTEMA'].unique()
-unique_indices = df['ÍNDICE'].unique()
-unique_companies = df['EMPRESA'].unique()
+# Configurar o layout da página para wide
+st.set_page_config(layout="wide")
 
 # Função para salvar o DataFrame no Excel
-def save_to_excel(df, file_path):
-    df.to_excel(file_path, index=False)
+def save_to_excel(df, file_path, sheet_name='Contratos'):
+    with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
 
-# Exiba o DataFrame no Streamlit
+# Função para registrar histórico
+def log_change(contract_num, action, df_historico):
+    new_log = pd.DataFrame({
+        'CONTRATO Nº': [contract_num],
+        'AÇÃO': [action],
+        'DATA': [datetime.now()]
+    })
+    df_historico = pd.concat([df_historico, new_log], ignore_index=True)
+    save_to_excel(df_historico, "planilhas/2024.xlsx", sheet_name='Históricos')
+    return df_historico
+
+# Leia os dados do arquivo Excel
+df = pd.read_excel("planilhas/2024.xlsx", sheet_name='Contratos')
+
+# Leia o histórico de alterações
+try:
+    df_historico = pd.read_excel("planilhas/2024.xlsx", sheet_name='Históricos')
+except FileNotFoundError:
+    df_historico = pd.DataFrame(columns=['CONTRATO Nº', 'AÇÃO', 'DATA'])
+
+# Exibir a tabela de contratos
+st.title('Gerenciamento de Contratos')
 st.dataframe(df)
 
-# Filtros e campos na barra lateral
-st.sidebar.header('Filtros e Modificações')
+# Barra lateral para ações
+st.sidebar.header('Ações')
 
-# Adicione uma opção para filtrar pelo número de contrato
-contrato_selecionado = st.sidebar.selectbox('Selecione o Número do Contrato', df['CONTRATO Nº'].unique())
+# Campo para inserir número de ticket
+ticket_num = st.sidebar.text_input('Número do Ticket')
 
-# Filtre o DataFrame com base no contrato selecionado
-df_filtrado = df[df['CONTRATO Nº'] == contrato_selecionado]
-st.write(f"Exibindo dados para o contrato: {contrato_selecionado}")
-st.dataframe(df_filtrado)
+# Botão para adicionar uma nova linha
+if st.sidebar.button('Adicionar Novo Contrato'):
+    if df.empty or not df.iloc[-1].isnull().all():  # Verifica se a última linha não está vazia
+        new_row = pd.DataFrame([{col: "" for col in df.columns}])  # Cria uma nova linha vazia
+        df = pd.concat([df, new_row], ignore_index=True)
+        st.experimental_rerun()  # Recarrega a página para atualizar a exibição
 
-# Campos para adicionar ou modificar um contrato
-st.sidebar.header('Adicionar/Modificar Contrato')
-novo_cliente = st.sidebar.checkbox('Novo Cliente?')
+# Campos para editar o último contrato adicionado
+if not df.empty and df.iloc[-1].isnull().all():
+    st.subheader('Preencha os detalhes do novo contrato')
+    for col in df.columns:
+        df.at[df.index[-1], col] = st.text_input(f'{col}', value=df.at[df.index[-1], col])
 
-# Campos comuns para modificação
-contrato_num = st.sidebar.text_input('Número do Contrato', value=contrato_selecionado if not novo_cliente else "")
-sistema = st.sidebar.selectbox('Sistema', unique_systems)
+# Botão para salvar as alterações
+if st.sidebar.button('Salvar Alterações'):
+    save_to_excel(df, "planilhas/2024.xlsx")
+    st.success('Alterações salvas com sucesso!')
 
-# Campos adicionais apenas para novos clientes
-if novo_cliente:
-    empresa = st.sidebar.selectbox('Empresa', unique_companies)
-    inicio = st.sidebar.date_input('Início', value=datetime.today())
-    termino = st.sidebar.date_input('Término', value=datetime.today())
-    mes = st.sidebar.text_input('Mês')
-    vigencia = st.sidebar.text_input('Vigência')
-    indice = st.sidebar.selectbox('Índice', unique_indices, index=0)  # Definindo índice padrão
-    periodo_faturamento = st.sidebar.text_input('Período de Faturamento')
-    valor_pago = st.sidebar.number_input('Valor Pago', min_value=0.0, format='%f')
-    valor_pago_12 = st.sidebar.number_input('Valor Pago (por 12 Meses)', min_value=0.0, format='%f')
-    indice_publicado = st.sidebar.text_input('Índice Publicado', value='Padrão')  # Valor padrão
-    indice_aplicado = st.sidebar.text_input('Índice Aplicado', value='Padrão')  # Valor padrão
-    valor_reajustado = st.sidebar.number_input('Valor Reajustado', min_value=0.0, format='%f')
-    valor_reajustado_12 = st.sidebar.number_input('Valor Reajustado (por 12 Meses)', min_value=0.0, format='%f')
-    pedido_ordem_compras = st.sidebar.text_input('Pedido/Ordem de Compras')
-    status_acao = st.sidebar.text_input('Status / Ação')
-    data_acao = st.sidebar.date_input('Data da Ação', value=datetime.today())
-    diferenca_valor_contrato = st.sidebar.number_input('Diferença de Valor de Contrato', min_value=0.0, format='%f')
-else:
-    # Preenchimento automático se não for novo cliente
-    if contrato_selecionado:
-        contrato_anterior = df[df['CONTRATO Nº'] == contrato_selecionado].iloc[0]
-        empresa = contrato_anterior['EMPRESA']
-        sistema = contrato_anterior['SISTEMA']
-        # Preencha outros campos conforme necessário
-
-# Função para validar os campos
-def validate_fields():
-    errors = []
-    if not contrato_num:
-        errors.append("Número do Contrato é obrigatório.")
-    if novo_cliente and not empresa:
-        errors.append("Empresa é obrigatória.")
-    if not sistema:
-        errors.append("Sistema é obrigatório.")
-    if novo_cliente and not indice:
-        errors.append("Índice é obrigatório.")
-    if novo_cliente and inicio > termino:
-        errors.append("A data de início não pode ser maior que a data de término.")
-    return errors
-
-# Botão para adicionar ou modificar o contrato
-if st.sidebar.button('Adicionar/Modificar'):
-    errors = validate_fields()
-    if errors:
-        for error in errors:
-            st.sidebar.error(error)
-    else:
-        if novo_cliente:
-            # Adicionar novo contrato
-            new_data = pd.DataFrame({
-                'CONTRATO Nº': [contrato_num],
-                'EMPRESA': [empresa],
-                'SISTEMA': [sistema],
-                'INÍCIO': [inicio],
-                'TÉRMINO': [termino],
-                'MÊS': [mes],
-                'VIGÊNCIA': [vigencia],
-                'ÍNDICE': [indice],
-                'PERÍODO DE FATURAMENTO': [periodo_faturamento],
-                'VALOR PAGO': [valor_pago],
-                'VALOR PAGO (POR 12 MESES)': [valor_pago_12],
-                'ÍNDICE PUBLICADO': [indice_publicado],
-                'ÍNDICE APLICADO': [indice_aplicado],
-                'VALOR REAJUSTADO': [valor_reajustado],
-                'VALOR REAJUSTADO (POR 12 MESES)': [valor_reajustado_12],
-                'PEDIDO/ORDEM DE COMPRAS': [pedido_ordem_compras],
-                'STATUS / AÇÃO': [status_acao],
-                'DATA DA AÇÃO': [data_acao],
-                'DIFERENÇA DE VALOR DE CONTRATO': [diferenca_valor_contrato]
-            })
-            df = pd.concat([df, new_data], ignore_index=True)
-            st.success('Contrato adicionado com sucesso!')
-        else:
-            # Modificar o contrato existente
-            df.loc[df['CONTRATO Nº'] == contrato_num, ['SISTEMA']] = [sistema]
-            st.success('Contrato modificado com sucesso!')
-
-        # Salve as alterações no arquivo Excel
-        save_to_excel(df, "planilhas/dados_estruturados.xlsx")
-
-# Botão para excluir o contrato
-st.sidebar.header('Excluir Contrato')
+# Campo para excluir uma linha
 contrato_excluir = st.sidebar.text_input('Número do Contrato para Excluir')
-if st.sidebar.button('Excluir'):
+if st.sidebar.button('Excluir Contrato'):
     if contrato_excluir in df['CONTRATO Nº'].values:
         df = df[df['CONTRATO Nº'] != contrato_excluir]
+        df_historico = log_change(contrato_excluir, 'Excluído', df_historico)
+        save_to_excel(df, "planilhas/2024.xlsx")
         st.success('Contrato excluído com sucesso!')
-
-        # Salve as alterações no arquivo Excel
-        save_to_excel(df, "planilhas/dados_estruturados.xlsx")
     else:
         st.sidebar.error('Contrato não encontrado!')
+
+# Opção para exibir histórico
+if st.sidebar.checkbox('Mostrar Histórico de Alterações'):
+    st.subheader('Histórico de Alterações')
+    st.dataframe(df_historico)

@@ -8,7 +8,7 @@ st.set_page_config(page_title="Gestão de Contratos", layout="wide")
 
 @st.cache_data
 def load_data():
-    df = pd.read_excel("planilhas/2024.xlsx")
+    df = pd.read_excel("Work-Dash/planilhas/2024.xlsx")
     return df
 
 df = load_data()

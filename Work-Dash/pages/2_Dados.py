@@ -22,7 +22,7 @@ def log_change(contract_num, action, df_historico):
     return df_historico
 
 # Leia os dados do arquivo Excel
-df = pd.read_excel("planilhas/2024.xlsx", sheet_name='Contratos')
+df = pd.read_excel("Work-Dash/planilhas/2024.xlsx", sheet_name='Contratos')
 
 # Leia o histórico de alterações
 try:

@@ -17,7 +17,7 @@ from configs import *
 _ = load_dotenv(find_dotenv())
 
 
-PASTA_ARQUIVOS = Path(__file__).parent / 'arquivos'
+PASTA_ARQUIVOS = Path(__file__).parent / 'Work-Dash/arquivos'
 
 
 def importacao_documentos():

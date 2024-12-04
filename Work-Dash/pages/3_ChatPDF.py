@@ -1,8 +1,13 @@
+import os
 import time
-
 import streamlit as st
-
+from pathlib import Path
 from utils import cria_chain_conversa, PASTA_ARQUIVOS
+
+# Certifique-se de que o diretório PASTA_ARQUIVOS existe
+PASTA_ARQUIVOS = Path("pdfs")  # Ajuste o caminho conforme necessário
+PASTA_ARQUIVOS.mkdir(parents=True, exist_ok=True)  # Cria o diretório se não existir
+
 
 def sidebar():
     uploaded_pdfs = st.file_uploader(

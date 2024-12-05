@@ -3,17 +3,22 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from sklearn.linear_model import LinearRegression
+from carregar_dados import leitura_de_dados
 
 st.set_page_config(page_title="Gestão de Contratos", layout="wide")
 
-@st.cache_data
-def load_data():
-    df = pd.read_excel("Work-Dash/planilhas/2024.xlsx")
-    return df
+# Carrega os dados
+leitura_de_dados()
 
-df = load_data()
+# Acesso aos dados carregados
+dados = st.session_state['dados']
+df = dados['df_contratos']
+
+# Exemplo de visualização de dados
+st.title("Dashboard de Gestão de Contratos")
 
 def process_data(df):
+    """Processa os dados agrupando por contrato e somando valores relevantes."""
     grouped_df = df.groupby('CONTRATO Nº').agg({
         'EMPRESA': 'first',
         'SISTEMA': 'first',
@@ -39,62 +44,6 @@ def process_data(df):
 
 grouped_df = process_data(df)
 
-# Dashboard
-st.title("Dashboard de Gestão de Contratos")
-
-# Função para formatar valores no formato brasileiro
-def format_currency(value):
-    return f"R${value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-# Calculando os valores das métricas
-valor_previsto = grouped_df['VALOR REAJUSTADO'].sum()
-valor_renovado = grouped_df[grouped_df['STATUS / AÇÃO'] == 'RENOVADO']['VALOR REAJUSTADO'].sum()
-valor_em_processo = grouped_df[grouped_df['STATUS / AÇÃO'] == 'EM PROCESSO']['VALOR REAJUSTADO'].sum()
-valor_cancelado = grouped_df[grouped_df['STATUS / AÇÃO'] == 'CANCELADO']['VALOR REAJUSTADO'].sum()
-
-# Calcular a diferença entre valor pago e valor reajustado para os cancelados
-df_cancelado = grouped_df[grouped_df['STATUS / AÇÃO'] == 'CANCELADO']
-diferenca_cancelado = (df_cancelado['VALOR REAJUSTADO'] - df_cancelado['VALOR PAGO']).sum()
-
-# Calcular a diferença entre valor pago e valor reajustado para os renovados
-df_renovado = grouped_df[grouped_df['STATUS / AÇÃO'] == 'RENOVADO']
-diferenca_renovado = (df_renovado['VALOR REAJUSTADO'] - df_renovado['VALOR PAGO']).sum()
-
-# Calcular a diferença entre valor pago e valor reajustado para os em processo
-df_em_processo = grouped_df[grouped_df['STATUS / AÇÃO'] == 'EM PROCESSO']
-diferenca_em_processo = (df_em_processo['VALOR REAJUSTADO'] - df_em_processo['VALOR PAGO']).sum()
-
-# Calcular o percentual de renovação
-total_contratos = len(grouped_df)
-total_renovados = len(df_renovado)
-percentual_renovacao = (total_renovados / total_contratos) * 100
-
-col1, col2, col3, col4, col5 = st.columns(5)
-
-with col1:
-    st.metric(label="Valor Previsto", value=format_currency(valor_previsto))
-
-with col2:
-    st.metric(label="Valor Renovado", value=format_currency(valor_renovado), delta=format_currency(diferenca_renovado), delta_color="normal")
-
-with col3:
-    st.metric(label="Valor em Processo", value=format_currency(valor_em_processo), delta=format_currency(diferenca_em_processo), delta_color="normal")
-
-with col4:
-    st.metric(
-        label="Valor Cancelado",
-        value=format_currency(valor_cancelado),
-        delta=format_currency(diferenca_cancelado),
-        delta_color="inverse"
-    )
-
-with col5:
-    st.metric(
-        label="Percentual de Renovação",
-        value=f"{percentual_renovacao:.2f}%",
-        delta=None
-    )
-
 # Barra Lateral
 with st.sidebar:
     st.header("Filtros")
@@ -105,10 +54,81 @@ with st.sidebar:
     meses = sorted(grouped_df['MÊS'].unique())
     selected_months = st.multiselect("Selecione o mês", options=meses, default=meses)
 
+# Filtrando os dados com base nos filtros selecionados
 filtered_df = grouped_df[
     (grouped_df['STATUS / AÇÃO'].isin(selected_status)) &
     (grouped_df['MÊS'].isin(selected_months))
 ]
+
+# Função para formatar valores no formato brasileiro
+def format_currency(value):
+    return f"R${value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+# Calculando os valores das métricas
+def calculate_metrics(df):
+    """Calcula as métricas a partir do DataFrame filtrado."""
+    valor_previsto = df['VALOR REAJUSTADO'].sum()
+    valor_renovado = df[df['STATUS / AÇÃO'] == 'RENOVADO']['VALOR REAJUSTADO'].sum()
+    valor_em_processo = df[df['STATUS / AÇÃO'] == 'EM PROCESSO']['VALOR REAJUSTADO'].sum()
+    valor_cancelado = df[df['STATUS / AÇÃO'] == 'CANCELADO']['VALOR REAJUSTADO'].sum()
+
+    # Calcular a diferença entre valor pago e valor reajustado para os cancelados
+    df_cancelado = df[df['STATUS / AÇÃO'] == 'CANCELADO']
+    diferenca_cancelado = (df_cancelado['VALOR REAJUSTADO'] - df_cancelado['VALOR PAGO']).sum()
+
+    # Calcular a diferença entre valor pago e valor reajustado para os renovados
+    df_renovado = df[df['STATUS / AÇÃO'] == 'RENOVADO']
+    diferenca_renovado = (df_renovado['VALOR REAJUSTADO'] - df_renovado['VALOR PAGO']).sum()
+
+    # Calcular a diferença entre valor pago e valor reajustado para os em processo
+    df_em_processo = df[df['STATUS / AÇÃO'] == 'EM PROCESSO']
+    diferenca_em_processo = (df_em_processo['VALOR REAJUSTADO'] - df_em_processo['VALOR PAGO']).sum()
+
+    # Calcular o percentual de renovação
+    total_contratos = len(df)
+    total_renovados = len(df_renovado)
+    percentual_renovacao = (total_renovados / total_contratos) * 100 if total_contratos > 0 else 0
+
+    return {
+        "valor_previsto": valor_previsto,
+        "valor_renovado": valor_renovado,
+        "valor_em_processo": valor_em_processo,
+        "valor_cancelado": valor_cancelado,
+        "diferenca_cancelado": diferenca_cancelado,
+        "diferenca_renovado": diferenca_renovado,
+        "diferenca_em_processo": diferenca_em_processo,
+        "percentual_renovacao": percentual_renovacao
+    }
+
+# Calculando as métricas
+metrics = calculate_metrics(filtered_df)
+
+# Exibindo as métricas
+col1, col2, col3, col4, col5 = st.columns(5)
+
+with col1:
+    st.metric(label="Valor Previsto", value=format_currency(metrics["valor_previsto"]))
+
+with col2:
+    st.metric(label="Valor Renovado", value=format_currency(metrics["valor_renovado"]), delta=format_currency(metrics["diferenca_renovado"]), delta_color="normal")
+
+with col3:
+    st.metric(label="Valor em Processo", value=format_currency(metrics["valor_em_processo"]), delta=format_currency(metrics["diferenca_em_processo"]), delta_color="normal")
+
+with col4:
+    st.metric(
+        label="Valor Cancelado",
+        value=format_currency(metrics["valor_cancelado"]),
+        delta=format_currency(metrics["diferenca_cancelado"]),
+        delta_color="inverse"
+    )
+
+with col5:
+    st.metric(
+        label="Percentual de Renovação",
+        value=f"{metrics['percentual_renovacao']:.2f}%",
+        delta=None
+    )
 
 # Funções de plotagem
 def plot_value_acrescentado(df):
@@ -273,6 +293,7 @@ def plot_regression_chart(df):
 
     return fig
 
+# Gráficos
 col1, col2, col3 = st.columns(3)
 
 with col1:

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import streamlit as st
 from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
@@ -10,6 +11,7 @@ from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
 from dotenv import load_dotenv, find_dotenv
 from configs import *
+import openai
 
 # Carregar variáveis de ambiente
 _ = load_dotenv(find_dotenv())
@@ -61,6 +63,8 @@ def cria_vector_store(documentos: list) -> FAISS:
     Returns:
         FAISS: Armazenamento vetorial criado.
     """
+    # Certifique-se de que a chave da API esteja configurada
+    openai.api_key = os.getenv("OPENAI_API_KEY")
     embedding_model = OpenAIEmbeddings()
     vector_store = FAISS.from_documents(
         documents=documentos,

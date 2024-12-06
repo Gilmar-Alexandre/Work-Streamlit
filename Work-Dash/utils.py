@@ -29,7 +29,10 @@ def importacao_documentos() -> list:
     for arquivo in PASTA_ARQUIVOS.glob('*.pdf'):
         loader = PyPDFLoader(str(arquivo))
         documentos_arquivo = loader.load()
-        documentos.extend(documentos_arquivo)
+        if documentos_arquivo:
+            documentos.extend(documentos_arquivo)
+    if not documentos:
+        raise ValueError("Nenhum documento foi carregado.")
     return documentos
 
 def split_de_documentos(documentos: list) -> list:
@@ -46,13 +49,16 @@ def split_de_documentos(documentos: list) -> list:
         chunk_overlap=250,
         separators=["\n\n", "\n", ".", " ", ""]
     )
-    documentos = recur_splitter.split_documents(documentos)
+    documentos_divididos = recur_splitter.split_documents(documentos)
 
     # Adiciona metadados a cada documento
-    for i, doc in enumerate(documentos):
+    for i, doc in enumerate(documentos_divididos):
         doc.metadata['source'] = doc.metadata['source'].split('/')[-1]
         doc.metadata['doc_id'] = i
-    return documentos
+
+    if not documentos_divididos:
+        raise ValueError("Nenhum documento foi dividido.")
+    return documentos_divididos
 
 def cria_vector_store(documentos: list) -> FAISS:
     """Cria um vetor de armazenamento a partir dos documentos.
@@ -63,16 +69,19 @@ def cria_vector_store(documentos: list) -> FAISS:
     Returns:
         FAISS: Armazenamento vetorial criado.
     """
-    # Certifique-se de que a chave da API esteja configurada
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    if not openai.api_key:
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
         raise ValueError("OPENAI_API_KEY não está definido")
 
-    embedding_model = OpenAIEmbeddings(api_key=openai.api_key)
+    embedding_model = OpenAIEmbeddings(api_key=openai_api_key)
     vector_store = FAISS.from_documents(
         documents=documentos,
         embedding=embedding_model
     )
+    
+    # Verificar se embeddings foram gerados
+    if vector_store.index.ntotal == 0:
+        raise ValueError("Nenhum embedding foi gerado.")
     return vector_store
 
 def cria_chain_conversa() -> None:

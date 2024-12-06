@@ -1,6 +1,6 @@
 import os
-from pathlib import Path
 import streamlit as st
+from pathlib import Path
 from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
@@ -17,7 +17,7 @@ import openai
 _ = load_dotenv(find_dotenv())
 
 # Definir o caminho da pasta de arquivos
-PASTA_ARQUIVOS = Path(__file__).parent / 'arquivos'
+PASTA_ARQUIVOS = Path(__file__).parent / 'pdfs'
 
 def importacao_documentos() -> list:
     """Importa documentos PDF da pasta especificada.
@@ -65,7 +65,10 @@ def cria_vector_store(documentos: list) -> FAISS:
     """
     # Certifique-se de que a chave da API esteja configurada
     openai.api_key = os.getenv("OPENAI_API_KEY")
-    embedding_model = OpenAIEmbeddings()
+    if not openai.api_key:
+        raise ValueError("OPENAI_API_KEY não está definido")
+
+    embedding_model = OpenAIEmbeddings(api_key=openai.api_key)
     vector_store = FAISS.from_documents(
         documents=documentos,
         embedding=embedding_model

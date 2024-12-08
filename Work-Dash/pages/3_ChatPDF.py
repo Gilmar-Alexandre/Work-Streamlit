@@ -23,12 +23,12 @@ def sidebar():
                 f.write(pdf.read())
     
     # Botão para inicializar ou atualizar o ChatBot
-    label_botao = 'Inicializar ChatBot' if 'chain' not in st.session_state else 'Atualizar ChatBot'
+    label_botao = 'Inicializar AmbiChats' if 'chain' not in st.session_state else 'Atualizar AmbiChats'
     if st.button(label_botao, use_container_width=True):
         if len(list(PASTA_ARQUIVOS.glob('*.pdf'))) == 0:
             st.error('Adicione arquivos .pdf para inicializar o chatbot')
         else:
-            st.success('Inicializando o ChatBot...')
+            st.success('Inicializando o AmbiChats...')
             cria_chain_conversa()
             st.rerun()
 
